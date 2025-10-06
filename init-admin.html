@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>初始化管理员</title>
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.2/dist/av-min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+            input:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+            button:hover {
+                background: #5a6fd8;
+            }
+
+            button:disabled {
+                background: #ccc;
+                cursor: not-allowed;
+            }
+
+        .message {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            display: none;
+            text-align: center;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .steps {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+            .steps h3 {
+                margin-top: 0;
+                color: #333;
+            }
+
+            .steps ol {
+                margin: 0;
+                padding-left: 20px;
+            }
+
+            .steps li {
+                margin-bottom: 5px;
+            }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>初始化管理员账户</h1>
+        <div class="subtitle">创建第一个管理员用户</div>
+
+        <div class="steps">
+            <h3>前置步骤（重要！）：</h3>
+            <ol>
+                <li>登录 LeanCloud 控制台</li>
+                <li>进入 ClassManager 应用</li>
+                <li>进入 数据存储 > 结构化数据</li>
+                <li>找到 _User 表，添加 isAdmin 列（Boolean 类型）</li>
+            </ol>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="username" placeholder="管理员用户名">
+        </div>
+        <div class="input-group">
+            <input type="password" id="password" placeholder="管理员密码（至少6位）">
+        </div>
+
+        <button onclick="createAdmin()" id="createBtn">创建管理员</button>
+
+        <div id="message" class="message"></div>
+    </div>
+
+    <script>
+        // 使用 AppKey 初始化（客户端权限）
+        AV.init({
+            appId: 'qUmcbO6SrqiCqp9iyY4xXFIQ-gzGzoHsz',
+            appKey: 't3XBdjkUPITzsMYwAo3KC15s',
+            serverURLs: 'https://qumcbo6s.lc-cn-n1-shared.com'
+        });
+
+        async function createAdmin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const createBtn = document.getElementById('createBtn');
+            const messageDiv = document.getElementById('message');
+
+            if (!username || !password) {
+                showMessage('请输入用户名和密码', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage('密码长度至少6位', 'error');
+                return;
+            }
+
+            createBtn.disabled = true;
+            createBtn.textContent = '创建中...';
+
+            try {
+                // 创建用户
+                const user = new AV.User();
+                user.setUsername(username);
+                user.setPassword(password);
+
+                // 设置管理员标志 - 前提是 isAdmin 字段已存在
+                user.set('isAdmin', true);
+
+                await user.signUp();
+
+                showMessage('管理员创建成功！', 'success');
+                createBtn.textContent = '创建成功';
+
+            } catch (error) {
+                console.error('创建失败:', error);
+
+                if (error.code === 202) {
+                    showMessage('用户名已被注册', 'error');
+                } else if (error.code === 137) {
+                    showMessage('错误：请先在LeanCloud控制台的 _User 表中添加 isAdmin 字段（Boolean类型）', 'error');
+                } else {
+                    showMessage('创建失败：' + error.message, 'error');
+                }
+
+                createBtn.disabled = false;
+                createBtn.textContent = '创建管理员';
+            }
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = 'message ' + type;
+            messageDiv.style.display = 'block';
+        }
+
+        // 按回车键触发创建
+        document.getElementById('password').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                createAdmin();
+            }
+        });
+    </script>
+</body>
+</html>

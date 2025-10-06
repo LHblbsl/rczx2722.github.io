@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生召唤系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.2/dist/av-min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+            .back-btn:hover {
+                background: rgba(255,255,255,0.3);
+                transform: translateY(-50%) scale(1.05);
+            }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .main-content {
+            padding: 20px;
+        }
+
+        /* 搜索区域 */
+        .search-section {
+            margin-bottom: 25px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+
+            .search-input:focus {
+                outline: none;
+                border-color: #667eea;
+                background: white;
+                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            }
+
+        .search-mode {
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 4px;
+            gap: 4px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+            .mode-btn.active {
+                background: white;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                color: #667eea;
+                font-weight: 600;
+            }
+
+        /* 召唤区域 */
+        .summon-section {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 25px;
+            color: white;
+        }
+
+        .summon-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .selected-count {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .summon-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+            .summon-btn:hover {
+                background: rgba(255,255,255,0.3);
+                transform: scale(1.05);
+            }
+
+            .summon-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                transform: none;
+            }
+
+        .remark-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 60px;
+            backdrop-filter: blur(10px);
+        }
+
+            .remark-input::placeholder {
+                color: rgba(255,255,255,0.7);
+            }
+
+            .remark-input:focus {
+                outline: none;
+                border-color: rgba(255,255,255,0.6);
+            }
+
+        /* 历史记录 */
+        .history-section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .clear-history {
+            background: #95a5a6;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+            .clear-history:hover {
+                background: #7f8c8d;
+            }
+
+        .history-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .history-item {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+            .history-item:hover {
+                background: #667eea;
+                color: white;
+                transform: scale(1.05);
+            }
+
+        /* 学生列表 */
+        .students-section {
+            margin-bottom: 20px;
+        }
+
+        .students-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .select-all {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+            .select-all:hover {
+                background: #5a6fd8;
+                transform: scale(1.05);
+            }
+
+        .students-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 2px solid #f0f0f0;
+            border-radius: 12px;
+            padding: 10px;
+        }
+
+        .student-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+            .student-item:last-child {
+                border-bottom: none;
+            }
+
+            .student-item:hover {
+                background: #f8f9fa;
+                border-radius: 8px;
+            }
+
+            .student-item.selected {
+                background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+                border-radius: 8px;
+            }
+
+        .student-checkbox {
+            margin-right: 12px;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+            .student-checkbox.checked {
+                background: #667eea;
+                border-color: #667eea;
+            }
+
+                .student-checkbox.checked::after {
+                    content: '✓';
+                    position: absolute;
+                    color: white;
+                    font-size: 14px;
+                    font-weight: bold;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                }
+
+        .student-info {
+            flex: 1;
+        }
+
+        .student-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .student-id {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .student-qq {
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* 刷新按钮 */
+        .refresh-section {
+            text-align: center;
+            padding: 20px 0 10px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .refresh-btn {
+            background: transparent;
+            border: 2px solid #95a5a6;
+            color: #95a5a6;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+            .refresh-btn:hover {
+                background: #95a5a6;
+                color: white;
+            }
+
+        /* 消息提示 */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            z-index: 2000;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+
+            .toast.show {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+        /* 加载动画 */
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f0f0f0;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <div class="header">
+            <button class="back-btn" onclick="goBack()">← 返回</button>
+            <h1>学生召唤系统</h1>
+            <p>快速召唤学生，提高课堂效率</p>
+        </div>
+
+        <!-- 主要内容 -->
+        <div class="main-content">
+            <!-- 搜索区域 -->
+            <div class="search-section">
+                <div class="search-box">
+                    <input type="text" id="searchInput" class="search-input" placeholder="输入学号或姓名搜索...">
+                    <div class="search-mode">
+                        <button class="mode-btn active" data-mode="name">按姓名</button>
+                        <button class="mode-btn" data-mode="id">按学号</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 召唤区域 -->
+            <div class="summon-section">
+                <div class="summon-header">
+                    <div class="selected-count" id="selectedCount">已选择 0 名学生</div>
+                    <button class="summon-btn" id="summonBtn" onclick="summonStudents()" disabled>召唤学生</button>
+                </div>
+                <textarea id="remarkInput" class="remark-input" placeholder="请输入召唤备注（可选）例如：请到办公室一趟、请完成作业等..."></textarea>
+            </div>
+
+            <!-- 历史记录 -->
+            <div class="history-section">
+                <div class="section-title">
+                    最近召唤
+                    <button class="clear-history" onclick="clearHistory()">清空</button>
+                </div>
+                <div class="history-list" id="historyList">
+                    <!-- 历史记录将通过JavaScript动态生成 -->
+                </div>
+            </div>
+
+            <!-- 学生列表 -->
+            <div class="students-section">
+                <div class="students-header">
+                    <div class="section-title">全体学生</div>
+                    <button class="select-all" onclick="toggleSelectAll()">全选</button>
+                </div>
+                <div class="students-list" id="studentsList">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <div>加载学生名单中...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 刷新按钮 -->
+            <div class="refresh-section">
+                <button class="refresh-btn" onclick="loadStudents(true)">刷新名单</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息提示 -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // LeanCloud 初始化
+        const APP_ID = 'qUmcbO6SrqiCqp9iyY4xXFIQ-gzGzoHsz';
+        const APP_KEY = 't3XBdjkUPITzsMYwAo3KC15s';
+        const SERVER_URL = 'https://qumcbo6s.lc-cn-n1-shared.com';
+
+        AV.init({
+            appId: APP_ID,
+            appKey: APP_KEY,
+            serverURLs: SERVER_URL
+        });
+
+        let currentUser = null;
+        let students = [];
+        let selectedStudents = new Set();
+        let searchMode = 'name'; // 默认按姓名搜索
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function () {
+            checkLoginStatus();
+            setupEventListeners();
+            loadLocalStudents();
+        });
+
+        // 检查登录状态
+        async function checkLoginStatus() {
+            const user = AV.User.current();
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+            currentUser = user;
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 搜索框输入事件
+            document.getElementById('searchInput').addEventListener('input', function (e) {
+                filterStudents(e.target.value);
+            });
+
+            // 搜索模式切换
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    searchMode = this.dataset.mode;
+                    // 重新搜索当前内容
+                    filterStudents(document.getElementById('searchInput').value);
+                });
+            });
+        }
+
+        // 加载学生数据
+        async function loadStudents(forceRefresh = false) {
+            const studentsList = document.getElementById('studentsList');
+
+            try {
+                // 检查本地存储
+                const localData = localStorage.getItem('studentsData');
+                const localTimestamp = localStorage.getItem('studentsTimestamp');
+                const oneDay = 24 * 60 * 60 * 1000; // 1天的毫秒数
+
+                if (!forceRefresh && localData && localTimestamp && (Date.now() - parseInt(localTimestamp)) < oneDay) {
+                    // 使用本地数据
+                    students = JSON.parse(localData);
+                    renderStudents(students);
+                    showToast('已加载本地学生名单', 'success');
+                    return;
+                }
+
+                // 显示加载状态
+                studentsList.innerHTML = `
+                        <div class="loading">
+                            <div class="loading-spinner"></div>
+                            <div>正在从云端加载学生名单...</div>
+                        </div>
+                    `;
+
+                // 从 LeanCloud 加载数据
+                const query = new AV.Query('Student');
+                query.ascending('studentId');
+                const results = await query.find();
+
+                students = results.map(student => ({
+                    objectId: student.id,
+                    name: student.get('name'),
+                    studentId: student.get('studentId'),
+                    qqNumber: student.get('qqNumber'),
+                    avatarVisible: student.get('avatarVisible'),
+                    isExcludedFromUp: student.get('isExcludedFromUp'),
+                    createdAt: student.createdAt,
+                    updatedAt: student.updatedAt
+                }));
+
+                // 保存到本地存储
+                localStorage.setItem('studentsData', JSON.stringify(students));
+                localStorage.setItem('studentsTimestamp', Date.now().toString());
+
+                renderStudents(students);
+                showToast('学生名单加载成功', 'success');
+
+            } catch (error) {
+                console.error('加载学生数据失败:', error);
+                studentsList.innerHTML = '<div class="empty-state">加载失败，请检查网络连接</div>';
+                showToast('加载失败: ' + error.message, 'error');
+            }
+        }
+
+        // 加载本地学生数据
+        function loadLocalStudents() {
+            const localData = localStorage.getItem('studentsData');
+            if (localData) {
+                students = JSON.parse(localData);
+                renderStudents(students);
+                loadHistory();
+            } else {
+                loadStudents();
+            }
+        }
+
+        // 渲染学生列表
+        function renderStudents(studentsToRender) {
+            const studentsList = document.getElementById('studentsList');
+
+            if (studentsToRender.length === 0) {
+                studentsList.innerHTML = '<div class="empty-state">没有找到学生</div>';
+                return;
+            }
+
+            let html = '';
+            studentsToRender.forEach(student => {
+                const isSelected = selectedStudents.has(student.objectId);
+                html += `
+                        <div class="student-item ${isSelected ? 'selected' : ''}" onclick="toggleStudent('${student.objectId}')">
+                            <div class="student-checkbox ${isSelected ? 'checked' : ''}"></div>
+                            <div class="student-info">
+                                <div class="student-name">${student.name}</div>
+                                <div class="student-id">学号: ${student.studentId}</div>
+                                <div class="student-qq">QQ: ${student.qqNumber}</div>
+                            </div>
+                        </div>
+                    `;
+            });
+
+            studentsList.innerHTML = html;
+            updateSelectedCount();
+        }
+
+        // 过滤学生
+        function filterStudents(keyword) {
+            if (!keyword.trim()) {
+                renderStudents(students);
+                return;
+            }
+
+            const filtered = students.filter(student => {
+                if (searchMode === 'name') {
+                    return student.name.includes(keyword);
+                } else {
+                    return student.studentId.toString().includes(keyword);
+                }
+            });
+
+            renderStudents(filtered);
+        }
+
+        // 切换选择学生
+        function toggleStudent(studentId) {
+            if (selectedStudents.has(studentId)) {
+                selectedStudents.delete(studentId);
+            } else {
+                selectedStudents.add(studentId);
+                addToHistory(studentId);
+            }
+
+            // 更新UI
+            const studentItem = document.querySelector(`.student-item[onclick="toggleStudent('${studentId}')"]`);
+            const checkbox = studentItem.querySelector('.student-checkbox');
+
+            if (selectedStudents.has(studentId)) {
+                studentItem.classList.add('selected');
+                checkbox.classList.add('checked');
+            } else {
+                studentItem.classList.remove('selected');
+                checkbox.classList.remove('checked');
+            }
+
+            updateSelectedCount();
+        }
+
+        // 全选/取消全选
+        function toggleSelectAll() {
+            const currentStudents = getCurrentDisplayStudents();
+
+            if (selectedStudents.size === currentStudents.length) {
+                // 取消全选
+                currentStudents.forEach(student => {
+                    selectedStudents.delete(student.objectId);
+                });
+            } else {
+                // 全选
+                currentStudents.forEach(student => {
+                    selectedStudents.add(student.objectId);
+                    addToHistory(student.objectId);
+                });
+            }
+
+            renderStudents(currentStudents);
+        }
+
+        // 获取当前显示的学生列表
+        function getCurrentDisplayStudents() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            if (!keyword) return students;
+
+            return students.filter(student => {
+                if (searchMode === 'name') {
+                    return student.name.includes(keyword);
+                } else {
+                    return student.studentId.toString().includes(keyword);
+                }
+            });
+        }
+
+        // 更新选择计数
+        function updateSelectedCount() {
+            const count = selectedStudents.size;
+            document.getElementById('selectedCount').textContent = `已选择 ${count} 名学生`;
+            document.getElementById('summonBtn').disabled = count === 0;
+        }
+
+        // 召唤学生
+        async function summonStudents() {
+            if (selectedStudents.size === 0) {
+                showToast('请先选择学生', 'error');
+                return;
+            }
+
+            const remark = document.getElementById('remarkInput').value.trim();
+            const selectedStudentsList = Array.from(selectedStudents).map(id =>
+                students.find(s => s.objectId === id)
+            );
+
+            try {
+                // 显示召唤中状态
+                const summonBtn = document.getElementById('summonBtn');
+                const originalText = summonBtn.textContent;
+                summonBtn.textContent = '召唤中...';
+                summonBtn.disabled = true;
+
+                // 创建召唤通知
+                const Notice = AV.Object.extend('Notice');
+                const notice = new Notice();
+
+                const studentNames = selectedStudentsList.map(s => s.name).join('、');
+                const title = `【学生召唤】${studentNames}`;
+                const content = remark || `${studentNames} 请尽快响应召唤`;
+
+                // 设置特殊颜色标识
+                notice.set('title', title);
+                notice.set('content', content);
+                notice.set('author', currentUser.get('username'));
+                notice.set('type', 'important'); // 使用重要类型，显示红色
+                notice.set('isSummonNotice', true);
+                notice.set('summonedStudents', selectedStudentsList.map(s => ({
+                    name: s.name,
+                    studentId: s.studentId,
+                    qqNumber: s.qqNumber
+                })));
+
+                await notice.save();
+
+                // 恢复按钮状态
+                summonBtn.textContent = originalText;
+                summonBtn.disabled = false;
+
+                // 清空选择
+                selectedStudents.clear();
+                document.getElementById('remarkInput').value = '';
+                renderStudents(students);
+
+                showToast(`成功召唤 ${selectedStudentsList.length} 名学生`, 'success');
+
+            } catch (error) {
+                console.error('召唤失败:', error);
+                showToast('召唤失败: ' + error.message, 'error');
+
+                // 恢复按钮状态
+                const summonBtn = document.getElementById('summonBtn');
+                summonBtn.textContent = '召唤学生';
+                summonBtn.disabled = false;
+            }
+        }
+
+        // 历史记录功能
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('summonHistory') || '[]');
+            const historyList = document.getElementById('historyList');
+
+            if (history.length === 0) {
+                historyList.innerHTML = '<div class="empty-state">暂无召唤历史</div>';
+                return;
+            }
+
+            let html = '';
+            // 只显示最近10条
+            history.slice(0, 10).forEach(studentId => {
+                const student = students.find(s => s.objectId === studentId);
+                if (student) {
+                    html += `<div class="history-item" onclick="selectStudentFromHistory('${studentId}')">${student.name}</div>`;
+                }
+            });
+
+            historyList.innerHTML = html;
+        }
+
+        function addToHistory(studentId) {
+            let history = JSON.parse(localStorage.getItem('summonHistory') || '[]');
+
+            // 移除已存在的记录（去重）
+            history = history.filter(id => id !== studentId);
+
+            // 添加到开头
+            history.unshift(studentId);
+
+            // 只保留最近20条
+            history = history.slice(0, 20);
+
+            localStorage.setItem('summonHistory', JSON.stringify(history));
+            loadHistory();
+        }
+
+        function selectStudentFromHistory(studentId) {
+            selectedStudents.add(studentId);
+            renderStudents(students);
+
+            // 滚动到该学生位置
+            const studentElement = document.querySelector(`.student-item[onclick="toggleStudent('${studentId}')"]`);
+            if (studentElement) {
+                studentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                // 添加视觉反馈
+                studentElement.style.animation = 'pulse 0.6s ease';
+                setTimeout(() => studentElement.style.animation = '', 600);
+            }
+        }
+
+        function clearHistory() {
+            localStorage.removeItem('summonHistory');
+            loadHistory();
+            showToast('历史记录已清空', 'success');
+        }
+
+        // 返回上一页
+        function goBack() {
+            // 返回到管理员发布页面
+            window.location.href = 'admin-publish.html';
+        }
+
+        // 显示消息提示
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // 添加脉冲动画
+        const style = document.createElement('style');
+        style.textContent = `
+                @keyframes pulse {
+                    0% { background: transparent; }
+                    50% { background: rgba(102, 126, 234, 0.2); }
+                    100% { background: transparent; }
+                }
+            `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

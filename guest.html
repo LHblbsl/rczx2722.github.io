@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班级通知 - 游客模式</title>
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.2/dist/av-min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 主容器 */
+        .app-container {
+            max-width: 100%;
+            min-height: 100vh;
+            background: white;
+            border-radius: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 顶部状态栏 */
+        .status-bar {
+            height: 44px;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            color: white;
+            font-size: 14px;
+        }
+
+        /* 头部导航 */
+        .header {
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .app-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .auth-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .auth-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .login-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .register-btn {
+            background: #f8f9fa;
+            color: #333;
+            border: 1px solid #e1e5e9;
+        }
+
+        .auth-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 标签导航 */
+        .tab-nav {
+            display: flex;
+            overflow-x: auto;
+            padding: 15px 20px;
+            background: white;
+            border-bottom: 1px solid #f0f0f0;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+            .tab-nav::-webkit-scrollbar {
+                display: none;
+            }
+
+        .tab-item {
+            padding: 10px 20px;
+            white-space: nowrap;
+            border-radius: 25px;
+            margin-right: 10px;
+            background: #f8f9fa;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+            color: #666;
+            flex-shrink: 0;
+        }
+
+            .tab-item.active {
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                transform: scale(1.05);
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            }
+
+        /* 页面容器 */
+        .page-container {
+            position: relative;
+            height: calc(100vh - 160px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            min-height: 100%;
+            padding: 20px;
+            opacity: 0;
+            transform: translateX(50px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+
+            .page.active {
+                opacity: 1;
+                transform: translateX(0);
+                pointer-events: all;
+                position: relative;
+            }
+
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #f0f0f0;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+            .card:active {
+                transform: scale(0.98);
+            }
+
+            .card h3 {
+                margin-bottom: 15px;
+                color: #333;
+                font-size: 18px;
+                font-weight: 600;
+            }
+
+        /* 通知类型标签 */
+        .notice-type-tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-right: 8px;
+            text-transform: uppercase;
+        }
+
+        .notice-type-homework {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .notice-type-reading {
+            background: linear-gradient(135deg, #00b894, #00a085);
+            color: white;
+        }
+
+        .notice-type-important {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .notice-type-user {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            color: white;
+        }
+
+        /* 通知列表样式 */
+        .notice-item {
+            padding: 16px;
+            border-bottom: 1px solid #f0f0f0;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+
+            .notice-item:active {
+                background: #f8f9fa;
+                transform: scale(0.98);
+            }
+
+        .notice-item-homework {
+            border-left-color: #667eea;
+            background: linear-gradient(to right, rgba(102, 126, 234, 0.02), transparent);
+        }
+
+        .notice-item-reading {
+            border-left-color: #00b894;
+            background: linear-gradient(to right, rgba(0, 184, 148, 0.02), transparent);
+        }
+
+        .notice-item-important {
+            border-left-color: #e74c3c;
+            background: linear-gradient(to right, rgba(231, 76, 60, 0.02), transparent);
+        }
+
+        .notice-item-user {
+            border-left-color: #95a5a6;
+            background: linear-gradient(to right, rgba(149, 165, 166, 0.02), transparent);
+        }
+
+        .notice-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .notice-title-section {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .notice-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+            line-height: 1.4;
+            margin: 0;
+        }
+
+        .notice-content {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 12px;
+            white-space: pre-line;
+        }
+
+        .notice-meta {
+            font-size: 12px;
+            color: #999;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .author-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .author-avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .time-info {
+            text-align: right;
+        }
+
+        /* 加载状态 */
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f0f0f0;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        /* 游客提示 */
+        .visitor-hint {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            color: #1565c0;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            text-align: center;
+            border-left: 4px solid #2196f3;
+        }
+
+        /* 动画定义 */
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部状态栏 -->
+        <div class="status-bar">
+            <div id="currentTime"></div>
+            <div>游客模式</div>
+        </div>
+
+        <!-- 头部 -->
+        <div class="header">
+            <div class="header-content">
+                <div class="app-title">班级通知</div>
+                <div class="auth-buttons">
+                    <button class="auth-btn login-btn" onclick="window.location.href='login.html'">登录</button>
+                    <button class="auth-btn register-btn" onclick="window.location.href='register.html'">注册</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 标签导航 -->
+        <div class="tab-nav">
+            <div class="tab-item active" onclick="switchTab('notices')">通知</div>
+        </div>
+
+        <!-- 页面容器 -->
+        <div class="page-container">
+            <!-- 通知页面 -->
+            <div id="noticesPage" class="page active">
+                <div class="visitor-hint">
+                    您当前处于游客模式，仅可查看通知内容。登录后可以发布通知和管理用户。
+                </div>
+                <div class="card">
+                    <h3>最新通知</h3>
+                    <div id="noticesList" class="loading">
+                        <div class="loading-spinner"></div>
+                        <div>加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // LeanCloud配置
+        const APP_ID = 'qUmcbO6SrqiCqp9iyY4xXFIQ-gzGzoHsz';
+        const APP_KEY = 't3XBdjkUPITzsMYwAo3KC15s';
+        const SERVER_URL = 'https://qumcbo6s.lc-cn-n1-shared.com';
+
+        AV.init({
+            appId: APP_ID,
+            appKey: APP_KEY,
+            serverURLs: SERVER_URL
+        });
+
+        let currentPage = 'notices';
+
+        // 切换标签页
+        function switchTab(tabName) {
+            if (currentPage === tabName) return;
+
+            const oldPage = document.getElementById(currentPage + 'Page');
+            const newPage = document.getElementById(tabName + 'Page');
+            const tabs = document.querySelectorAll('.tab-item');
+
+            // 更新标签状态
+            tabs.forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // 页面切换动画
+            oldPage.classList.remove('active');
+            oldPage.classList.add('slide-left');
+
+            setTimeout(() => {
+                newPage.classList.remove('slide-left');
+                newPage.classList.add('active');
+                currentPage = tabName;
+            }, 50);
+        }
+
+        // 加载通知
+        async function loadNotices() {
+            try {
+                const query = new AV.Query('Notice');
+                query.descending('createdAt');
+                const notices = await query.find();
+
+                const noticesList = document.getElementById('noticesList');
+
+                if (notices.length === 0) {
+                    noticesList.innerHTML = '<div style="text-align: center; color: #666; padding: 40px 20px;">还没有通知</div>';
+                    return;
+                }
+
+                let html = '';
+                notices.forEach(notice => {
+                    const title = notice.get('title');
+                    const content = notice.get('content');
+                    const author = notice.get('author') || '未知';
+                    const type = notice.get('type') || 'user';
+                    const createdAt = new Date(notice.createdAt);
+
+                    const typeClass = `notice-item-${type}`;
+                    const typeTag = getTypeTag(type, title);
+                    const authorFirstChar = author.charAt(0).toUpperCase();
+                    const timeString = formatTime(createdAt);
+
+                    html += `
+                            <div class="notice-item ${typeClass}">
+                                <div class="notice-header">
+                                    <div class="notice-title-section">
+                                        ${typeTag}
+                                        <div class="notice-title">${escapeHtml(title)}</div>
+                                    </div>
+                                    <div class="time-info">
+                                        ${timeString}
+                                    </div>
+                                </div>
+
+                                <div class="notice-content">
+                                    ${escapeHtml(content).replace(/\n/g, '<br>')}
+                                </div>
+
+                                <div class="notice-meta">
+                                    <div class="author-info">
+                                        <div class="author-avatar">${authorFirstChar}</div>
+                                        <span>${escapeHtml(author)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                });
+
+                noticesList.innerHTML = html;
+            } catch (error) {
+                console.error('加载通知失败:', error);
+                document.getElementById('noticesList').innerHTML = '<div style="text-align: center; color: #e74c3c; padding: 20px;">加载失败</div>';
+            }
+        }
+
+        // 获取类型标签
+        function getTypeTag(type, title) {
+            const typeMap = {
+                'homework': { text: '作业', class: 'notice-type-homework' },
+                'reading': { text: '早晚读', class: 'notice-type-reading' },
+                'important': { text: '重要', class: 'notice-type-important' },
+                'user': { text: '普通', class: 'notice-type-user' }
+            };
+
+            const typeInfo = typeMap[type] || typeMap['user'];
+
+            // 如果标题已经包含类型标识，就不显示标签
+            if (title.includes('【作业】') || title.includes('【早晚读】') || title.includes('【重要】')) {
+                return '';
+            }
+
+            return `<span class="notice-type-tag ${typeInfo.class}">${typeInfo.text}</span>`;
+        }
+
+        // 格式化时间显示
+        function formatTime(date) {
+            const now = new Date();
+            const diff = now - date;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+
+            if (minutes < 1) {
+                return '刚刚';
+            } else if (minutes < 60) {
+                return `${minutes}分钟前`;
+            } else if (hours < 24) {
+                return `${hours}小时前`;
+            } else if (days < 7) {
+                return `${days}天前`;
+            } else {
+                return date.toLocaleDateString();
+            }
+        }
+
+        // HTML转义防止XSS
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe.toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // 更新时间
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent =
+                `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function () {
+            updateTime();
+            loadNotices();
+        });
+    </script>
+</body>
+</html>
